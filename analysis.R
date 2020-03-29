@@ -23,18 +23,49 @@ columns <- sapply(data, names)
 startPred <- sapply(columns, function(x){which(x == "Reflexiv")})
 endPred <- sapply(columns, length)
 
-#' Decision trees
+#' Analysis
 
-make.trees <- function(verb) {
+make.analyses <- function(verb) {
 	
+	cat("\n======\n")
+	cat(verb)
+	cat("\n======\n")
+
 	verbdata <- data.frame(lapply(data[[verb]], factor))
+	verbdata <- verbdata[,startPred[verb]:endPred[verb]]
+
+	for (factor in 2:ncol(verbdata)) {
+		
+		freq <- table(verbdata$Reflexiv, verbdata[,factor])
+		chi2 <- suppressWarnings(chisq.test(freq))
+		res <- round(chi2$stdres, digits = 1)
+		
+		cat("\n")
+		cat(colnames(verbdata)[factor])
+		cat(", Chi-squared p-value = ")
+		cat(signif(chi2$p.value, digits = 3))
+		cat("\n")
+		
+		print(freq)
+		print(res)
+		
+	}
+
+	model <- glm(Reflexiv ~ . 
+			, data = verbdata
+			, family = binomial
+			)
 	treeRpart <- rpart(Reflexiv ~ . 
-			, data = verbdata[,startPred[verb]:endPred[verb]]
+			, data = verbdata
 			, model = TRUE
 			)
 	treeC50 <- C5.0(Reflexiv ~ . 
-			, data = verbdata[,startPred[verb]:endPred[verb]]
+			, data = verbdata
 			)
+	
+	print(summary(model))
+	best <- step(model)
+	print(summary(best))
 				
 	rpart.plot(treeRpart)
 	title(main = verb)
@@ -42,25 +73,7 @@ make.trees <- function(verb) {
 		
 }
 
-sapply(files, make.trees)
-
-#' Linear models
-
-for (verb in files) {
-	
-	verbdata <- data.frame(lapply(data[[verb]], factor))
-	model <- glm(Reflexiv ~ . 
-			, data = verbdata[,startPred[verb]:endPred[verb]]
-			, family = binomial
-			)
-	cat("\n======\n")
-	cat(verb)
-	cat("\n======\n")
-	print(summary(model))
-	best <- step(model)
-	print(summary(best))
-
-}
+sapply(files, make.analyses)
 
 # show Session Info
 sessionInfo()
